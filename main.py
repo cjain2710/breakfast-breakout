@@ -15,20 +15,30 @@ def run_engine():
 
     results = []
 
-    # Step 1: Get filtered stock universe
     stocks = screen_stocks()
 
-    print(f"Scanning {len(stocks)} stocks...")
+    print(f"\n🚀 Starting Breakfast Breakout Engine")
+    print(f"Scanning {len(stocks)} stocks...\n")
 
-    # Step 2: Process each stock
+    if not stocks:
+        print("❌ No stocks found in screener. Exiting safely.")
+        return
+
     for stock in stocks:
 
         try:
+            print(f"📊 Processing {stock}")
+
             df = get_intraday(stock)
+
+            if df is None or df.empty:
+                print(f"⚠️ No intraday data for {stock}")
+                continue
 
             signal, price, level = breakout_signal(df)
 
-            # Skip non-trading setups
+            print(f"   Signal: {signal} | Price: {price}")
+
             if signal == "WAIT":
                 continue
 
@@ -39,24 +49,42 @@ def run_engine():
                 "Signal": signal,
                 "Entry": round(price, 2),
                 "Level": round(level, 2) if level else None,
-                "Stop": round(stop, 2),
-                "Target": round(target, 2)
+                "Stop": round(stop, 2) if stop else None,
+                "Target": round(target, 2) if target else None
             })
 
         except Exception as e:
-            print(f"Error processing {stock}: {e}")
+            print(f"❌ Error processing {stock}: {str(e)}")
 
-    # Step 3: Rank Top 10 signals (simple ranking by momentum proxy)
+    # Ensure stable output even if no trades
+    if not results:
+        print("\n⚠️ No breakout signals generated today.")
+
+        results.append({
+            "Stock": "NO TRADE",
+            "Signal": "WAIT",
+            "Entry": 0,
+            "Level": 0,
+            "Stop": 0,
+            "Target": 0
+        })
+
+    # Sort (optional: strongest first)
     results = sorted(results, key=lambda x: x["Entry"], reverse=True)[:10]
 
-    # Step 4: Generate report
+    print("\n📄 Generating report...")
+
     file_path = generate_report(results)
 
-    # Step 5: Email report only
-    send_email(file_path)
+    print(f"📧 Sending email: {file_path}")
 
-    print("\n✅ Breakfast Breakout Engine Completed")
-    print(f"Report saved at: {file_path}")
+    try:
+        send_email(file_path)
+        print("✅ Email sent successfully")
+    except Exception as e:
+        print(f"❌ Email failed: {str(e)}")
+
+    print("\n🏁 Breakfast Breakout Engine Completed")
 
 
 if __name__ == "__main__":
