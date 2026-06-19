@@ -1,0 +1,8 @@
+pandas
+numpy
+yfinance
+pandas_ta
+python-dotenv
+schedule
+tabulate
+twilio
