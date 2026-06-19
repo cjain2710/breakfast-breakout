@@ -9,48 +9,55 @@ from strategy.risk import risk_levels
 
 from reports.generator import generate_report
 from alerts.emailer import send_email
-from alerts.whatsapp import send_whatsapp
 
-results = []
 
-stocks = screen_stocks()
+def run_engine():
 
-for stock in stocks:
+    results = []
 
-    try:
-        df = get_intraday(stock)
+    # Step 1: Get filtered stock universe
+    stocks = screen_stocks()
 
-        signal, price, level = breakout_signal(df)
+    print(f"Scanning {len(stocks)} stocks...")
 
-        if signal == "WAIT":
-            continue
+    # Step 2: Process each stock
+    for stock in stocks:
 
-        stop, target = risk_levels(signal, price)
+        try:
+            df = get_intraday(stock)
 
-        results.append({
-            "Stock": stock,
-            "Signal": signal,
-            "Entry": price,
-            "Level": level,
-            "Stop": stop,
-            "Target": target
-        })
+            signal, price, level = breakout_signal(df)
 
-    except:
-        continue
+            # Skip non-trading setups
+            if signal == "WAIT":
+                continue
 
-results = results[:10]
+            stop, target = risk_levels(signal, price)
 
-file_path = generate_report(results)
+            results.append({
+                "Stock": stock,
+                "Signal": signal,
+                "Entry": round(price, 2),
+                "Level": round(level, 2) if level else None,
+                "Stop": round(stop, 2),
+                "Target": round(target, 2)
+            })
 
-send_email(file_path)
+        except Exception as e:
+            print(f"Error processing {stock}: {e}")
 
-msg = "\n".join([
-    f"{r['Stock']} {r['Signal']} @ {r['Entry']}"
-    for r in results
-])
+    # Step 3: Rank Top 10 signals (simple ranking by momentum proxy)
+    results = sorted(results, key=lambda x: x["Entry"], reverse=True)[:10]
 
-send_whatsapp(msg)
+    # Step 4: Generate report
+    file_path = generate_report(results)
 
-print("Done")
+    # Step 5: Email report only
+    send_email(file_path)
 
+    print("\n✅ Breakfast Breakout Engine Completed")
+    print(f"Report saved at: {file_path}")
+
+
+if __name__ == "__main__":
+    run_engine()
