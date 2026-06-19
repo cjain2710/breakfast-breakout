@@ -1,18 +1,16 @@
-def breakfast_range(df):
+def breakout_signal(df):
+
+    if df is None or df.empty:
+        return "WAIT", 0.0, None
 
     session = df.between_time("09:30", "10:30")
+
+    if session.empty:
+        return "WAIT", 0.0, None
 
     high = float(session["High"].max())
     low = float(session["Low"].min())
 
-    return high, low
-
-
-def breakout_signal(df):
-
-    high, low = breakfast_range(df)
-
-    # IMPORTANT FIX: force scalar value
     price = float(df["Close"].iloc[-1])
 
     if price >= high:
